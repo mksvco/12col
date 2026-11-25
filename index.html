@@ -40,7 +40,8 @@
   }
   .title {
     font-size: 12px; font-weight: 600;
-    padding: 12px 14px;
+    height: 41px; flex: none; padding: 0 14px;
+    display: flex; align-items: center;
     border-bottom: 1px solid var(--line);
   }
   section {
@@ -109,6 +110,14 @@
   .toggle input:checked + span { color: var(--accent); background: #edf2fd; }
   .toggle input:focus-visible + span { box-shadow: 0 0 0 1px var(--accent); }
 
+  .swatch { position: relative; display: inline-flex; cursor: pointer; }
+  .swatch input[type=color] {
+    width: 18px; height: 18px; padding: 0; border: 0; background: none; cursor: pointer;
+  }
+  .swatch input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  .swatch input[type=color]::-webkit-color-swatch { border: 1px solid rgba(0,0,0,.15); border-radius: 3px; }
+  .swatch input[type=color]::-moz-color-swatch { border: 1px solid rgba(0,0,0,.15); border-radius: 3px; }
+
   label.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   label.check input { margin: 0; accent-color: var(--accent); }
   .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
@@ -133,13 +142,29 @@
   button:hover { background: #f5f5f5; }
   button.primary { height: 30px; color: #fff; background: var(--accent); border-color: var(--accent); }
   button.primary:hover { background: var(--accent); filter: brightness(0.94); }
+  button.ghost { border-color: transparent; background: transparent; padding: 0 8px; }
+  button.ghost:hover { background: #f0f0f0; }
+  button.ghost.on { color: var(--accent); background: #edf2fd; }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* ---------- canvas area ---------- */
   main {
     flex: 1; min-width: 0; position: relative;
+    display: flex; flex-direction: column;
+  }
+  .toolbar {
+    height: 41px; flex: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0 8px 0 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .toolbar .info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tools { display: flex; gap: 2px; flex: none; }
+  .stage {
+    flex: 1; min-height: 0;
     display: flex; align-items: center; justify-content: center;
-    padding: 40px;
+    padding: 32px;
   }
   canvas {
     display: block;
@@ -148,13 +173,13 @@
       conic-gradient(#d6d6d6 25%, #fff 0 50%, #d6d6d6 0 75%, #fff 0) 0 0 / 12px 12px;
   }
   .status {
-    position: absolute; left: 0; right: 0; bottom: 0;
+    flex: none;
     height: 26px; padding: 0 12px;
     display: flex; align-items: center; justify-content: flex-end; gap: 12px;
     color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums;
   }
   .toast {
-    position: absolute; top: 12px; left: 50%;
+    position: absolute; top: 53px; left: 50%;
     transform: translate(-50%, -6px);
     background: #222; color: #fff;
     padding: 6px 10px; border-radius: 4px;
@@ -165,7 +190,7 @@
 
   /* Google Slides guides panel */
   .sheet {
-    position: absolute; top: 12px; right: 12px; bottom: 34px;
+    position: absolute; top: 53px; right: 12px; bottom: 34px;
     width: 300px; max-width: calc(100% - 24px);
     background: var(--panel);
     border: 1px solid var(--line); border-radius: 6px;
@@ -188,7 +213,8 @@
     body { flex-direction: column; height: auto; }
     aside { width: 100%; border-right: 0; border-bottom: 1px solid var(--line); }
     .footer { position: static; }
-    main { padding: 16px 16px 32px; min-height: 60vh; }
+    main { min-height: 70vh; }
+    .stage { padding: 16px; }
   }
 </style>
 </head>
@@ -217,8 +243,8 @@
       <div class="head">Grid</div>
       <div class="grid2">
         <label class="input" title="Columns"><span>Cols</span><input type="number" id="cols" min="0" max="500" value="12"></label>
-        <label class="input" title="Rows"><span>Rows</span><input type="number" id="rows" min="0" max="500" value="6"></label>
         <label class="input" title="Gutter between columns"><span>Gutter</span><input type="number" id="gx" min="0" value="0"></label>
+        <label class="input" title="Rows"><span>Rows</span><input type="number" id="rows" min="0" max="500" value="6"></label>
         <label class="input" title="Gutter between rows"><span>Gutter</span><input type="number" id="gy" min="0" value="0"></label>
       </div>
     </section>
@@ -243,52 +269,52 @@
     </section>
 
     <section>
-      <div class="head">Lines</div>
+      <div class="head">Style</div>
       <div class="grid2">
         <label class="input color" title="Line color"><input type="color" id="color" value="#ff0000"><span class="hex" data-hex="color"></span></label>
-        <label class="input" title="Line thickness"><span>Px</span><input type="number" id="lw" min="1" max="50" value="1"></label>
+        <label class="input" title="Line thickness"><span>Px</span><input type="number" id="lw" min="0" max="50" value="1"></label>
+        <select id="fill" aria-label="Fill" title="Tint columns, rows or cells with the line color">
+          <option value="none" selected>No fill</option>
+          <option value="columns">Fill columns</option>
+          <option value="rows">Fill rows</option>
+          <option value="cells">Fill cells</option>
+        </select>
+        <label class="input" title="Fill opacity"><span>Opacity</span><input type="number" id="fo" min="0" max="100" value="10"><span class="suffix">%</span></label>
       </div>
       <label class="check"><input type="checkbox" id="transparent"> Transparent background</label>
     </section>
 
     <section>
-      <div class="head">Fill</div>
-      <div class="grid2">
-        <select id="fill" aria-label="Fill">
-          <option value="none" selected>None</option>
-          <option value="columns">Columns</option>
-          <option value="rows">Rows</option>
-          <option value="cells">Cells</option>
-        </select>
-        <label class="input" title="Fill opacity"><input type="number" id="fo" min="0" max="100" value="10"><span class="suffix">%</span></label>
+      <div class="head">
+        Guides
+        <label class="swatch" title="Guide color"><input type="color" id="color2" value="#0096ff" aria-label="Guide color"></label>
       </div>
-    </section>
-
-    <section>
-      <div class="head">Guides</div>
       <div class="checks">
         <label class="check" title="Lines through the middle"><input type="checkbox" id="gCenter"> Center</label>
         <label class="check" title="Rule of thirds"><input type="checkbox" id="gThirds"> Thirds</label>
         <label class="check" title="Action safe area (93%)"><input type="checkbox" id="gAction"> Action safe</label>
         <label class="check" title="Title safe area (90%)"><input type="checkbox" id="gTitle"> Title safe</label>
       </div>
-      <label class="input color" title="Guide color"><input type="color" id="color2" value="#0096ff"><span class="hex" data-hex="color2"></span></label>
     </section>
 
     <div class="footer">
-      <div class="info" id="info"></div>
       <button id="download" class="primary">Export PNG</button>
-      <div class="grid3">
+      <div class="grid2">
         <button id="copyPng" title="Copy the grid as an image">Copy PNG</button>
         <button id="copySvg" title="Copy as vectors: paste into Figma or Illustrator">Copy SVG</button>
-        <button id="copyLink" title="Copy a link to these settings">Copy link</button>
       </div>
-      <button id="slidesBtn" title="Guide positions in inches for Google Slides">Google Slides guides…</button>
     </div>
   </aside>
 
-  <main id="stage">
-    <canvas id="canvas"></canvas>
+  <main>
+    <div class="toolbar">
+      <span class="info" id="info"></span>
+      <div class="tools">
+        <button id="slidesBtn" class="ghost" title="Guide positions in inches for Google Slides">Slides guides</button>
+        <button id="copyLink" class="ghost" title="Copy a link to these settings">Copy link</button>
+      </div>
+    </div>
+    <div class="stage" id="stage"><canvas id="canvas"></canvas></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="sheet" id="sheet" hidden>
       <div class="sheet-head">
@@ -389,7 +415,7 @@
       rows: Math.round(num('rows', 0, 500)),
       gx: num('gx'), gy: num('gy'),
       mt: num('mt'), mr: num('mr'), mb: num('mb'), ml: num('ml'),
-      lw: Math.round(num('lw', 1, 50)),
+      lw: Math.round(num('lw', 0, 50)),
       color: $('color').value,
       transparent: $('transparent').checked,
       fill: ['columns', 'rows', 'cells'].includes(fill) ? fill : 'none',
@@ -426,7 +452,8 @@
   function build(s, k) {
     const W = Math.max(1, Math.round(s.w * k));
     const H = Math.max(1, Math.round(s.h * k));
-    const lw = Math.max(1, Math.round(s.lw * k));
+    // Px 0 hides the grid lines; guides still draw at 1px so they stay usable.
+    const lw = Math.max(1, Math.round(Math.max(1, s.lw) * k));
     const R = v => Math.round(v * k);
     const at = (p, max) => Math.min(max - lw, Math.max(0, Math.round(p * k - lw / 2)));
     const range = (a, b, max) => {
@@ -437,17 +464,20 @@
     const fills = [], grid = [], guides = [];
 
     if (g.ok) {
-      const box = (x0, y0, x1, y1) => ({ x: R(x0), y: R(y0), w: R(x1) - R(x0), h: R(y1) - R(y0) });
+      // Every other column/row (checkerboard for cells) gets half the fill strength.
+      const box = (x0, y0, x1, y1, alt) => ({ x: R(x0), y: R(y0), w: R(x1) - R(x0), h: R(y1) - R(y0), a: alt ? 0.5 : 1 });
       const top = s.mt, bottom = s.mt + g.ch, left = s.ml, right = s.ml + g.cw;
-      if (s.fill === 'columns') for (const [a, b] of g.cols) fills.push(box(a, top, b, bottom));
-      if (s.fill === 'rows') for (const [a, b] of g.rows) fills.push(box(left, a, right, b));
-      if (s.fill === 'cells') for (const [a, b] of g.cols) for (const [c, d] of g.rows) fills.push(box(a, c, b, d));
+      if (s.fill === 'columns') g.cols.forEach(([a, b], i) => fills.push(box(a, top, b, bottom, i % 2)));
+      if (s.fill === 'rows') g.rows.forEach(([a, b], j) => fills.push(box(left, a, right, b, j % 2)));
+      if (s.fill === 'cells') g.cols.forEach(([a, b], i) => g.rows.forEach(([c, d], j) => fills.push(box(a, c, b, d, (i + j) % 2))));
 
       const xs = new Set(), ys = new Set();
+      if (s.lw > 0) {
       for (const [a, b] of g.cols) { xs.add(at(a, W)); xs.add(at(b, W)); }
       for (const [a, b] of g.rows) { ys.add(at(a, H)); ys.add(at(b, H)); }
       for (const x of xs) grid.push({ x, y: 0, w: lw, h: H, v: true });
       for (const y of ys) grid.push({ x: 0, y, w: W, h: lw, v: false });
+      }
     }
 
     const vline = (x, y0 = 0, y1 = s.h) => { const [y, h] = range(y0, y1, H); guides.push({ x: at(x, W), y, w: lw, h, v: true }); };
@@ -472,8 +502,7 @@
     c.clearRect(0, 0, m.W, m.H);
     if (!s.transparent) { c.fillStyle = '#ffffff'; c.fillRect(0, 0, m.W, m.H); }
     c.fillStyle = s.color;
-    c.globalAlpha = s.fo;
-    for (const r of m.fills) c.fillRect(r.x, r.y, r.w, r.h);
+    for (const r of m.fills) { c.globalAlpha = s.fo * r.a; c.fillRect(r.x, r.y, r.w, r.h); }
     c.globalAlpha = 1;
     for (const r of m.grid) c.fillRect(r.x, r.y, r.w, r.h);
     c.fillStyle = s.color2;
@@ -488,7 +517,7 @@
       : `<line x1="${r.x}" y1="${r.y + half}" x2="${r.x + r.w}" y2="${r.y + half}"/>`;
     const out = [`<svg xmlns="http://www.w3.org/2000/svg" width="${m.W}" height="${m.H}" viewBox="0 0 ${m.W} ${m.H}">`];
     if (!s.transparent) out.push(`<rect id="Background" width="${m.W}" height="${m.H}" fill="#ffffff"/>`);
-    if (m.fills.length) out.push(`<g id="Fill" fill="${s.color}" fill-opacity="${s.fo}">${m.fills.map(r => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`).join('')}</g>`);
+    if (m.fills.length) out.push(`<g id="Fill" fill="${s.color}">${m.fills.map(r => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill-opacity="${+(s.fo * r.a).toFixed(4)}"/>`).join('')}</g>`);
     if (m.grid.length) out.push(`<g id="Grid" stroke="${s.color}" stroke-width="${m.lw}">${m.grid.map(line).join('')}</g>`);
     if (m.guides.length) out.push(`<g id="Guides" stroke="${s.color2}" stroke-width="${m.lw}">${m.guides.map(line).join('')}</g>`);
     out.push('</svg>');
@@ -561,8 +590,13 @@
       `Slide is ${fmt3(st.slideW)} × ${fmt3(st.slideH)} in. Match it in Slides under File → Page setup.`;
   }
 
-  $('slidesBtn').addEventListener('click', () => { $('sheet').hidden = !$('sheet').hidden; renderSheet(); });
-  $('sheetClose').addEventListener('click', () => { $('sheet').hidden = true; });
+  const showSheet = open => {
+    $('sheet').hidden = !open;
+    $('slidesBtn').classList.toggle('on', open);
+    renderSheet();
+  };
+  $('slidesBtn').addEventListener('click', () => showSheet($('sheet').hidden));
+  $('sheetClose').addEventListener('click', () => showSheet(false));
   $('slideW').addEventListener('input', () => { renderSheet(); save(); });
   $('copyInches').addEventListener('click', () => copy('List', () => {
     const st = slideStops(read());
