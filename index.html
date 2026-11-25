@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12col</title>
+<meta name="description" content="Make column and row grid guides for any canvas size and export them as a PNG.">
+<link rel="canonical" href="https://12col.xyz/">
+<meta property="og:title" content="12col">
+<meta property="og:description" content="Make column and row grid guides for any canvas size and export them as a PNG.">
+<meta property="og:url" content="https://12col.xyz/">
+<style>
+  :root {
+    --panel: #ffffff;
+    --canvas-bg: #e8e8e8;
+    --line: #e3e3e3;
+    --field-line: #d4d4d4;
+    --text: #222;
+    --muted: #8c8c8c;
+    --accent: #2f6fec;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font: 12px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: var(--canvas-bg);
+    display: flex;
+  }
+
+  /* ---------- panel ---------- */
+  aside {
+    width: 248px;
+    flex: none;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .title {
+    font-size: 12px; font-weight: 600;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  section {
+    padding: 12px 14px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 600; height: 20px;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+  /* text field with a small inline label */
+  .input {
+    display: flex; align-items: center;
+    height: 28px;
+    border: 1px solid var(--field-line);
+    border-radius: 4px;
+    background: #fff;
+    min-width: 0;
+  }
+  .input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .input > span {
+    flex: none; padding-left: 7px;
+    color: var(--muted); font-size: 11px;
+    user-select: none;
+  }
+  .input input {
+    flex: 1; min-width: 0; width: 100%; height: 100%;
+    border: 0; outline: 0; background: transparent;
+    font: inherit; color: var(--text);
+    padding: 0 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  select {
+    width: 100%; height: 28px;
+    font: inherit; color: var(--text);
+    border: 1px solid var(--field-line); border-radius: 4px;
+    background: #fff; padding: 0 6px;
+  }
+  select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+  .input.color { padding-left: 4px; }
+  .input.color input[type=color] {
+    flex: none; width: 20px; height: 20px; padding: 0; border: 0;
+    background: none; cursor: pointer;
+  }
+  .input.color input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  .input.color input[type=color]::-webkit-color-swatch { border: 1px solid rgba(0,0,0,.15); border-radius: 3px; }
+  .input.color .hex { padding-left: 6px; color: var(--text); font-size: 12px; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+
+  /* link toggle for margins */
+  .toggle { position: relative; display: inline-flex; }
+  .toggle input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .toggle span {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-weight: 400; font-size: 11px; color: var(--muted);
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .toggle span svg { width: 12px; height: 12px; }
+  .toggle input:checked + span { color: var(--accent); background: #edf2fd; }
+  .toggle input:focus-visible + span { box-shadow: 0 0 0 1px var(--accent); }
+
+  label.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  label.check input { margin: 0; accent-color: var(--accent); }
+
+  .footer { margin-top: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .info { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .info.warn { color: #c62828; }
+
+  button {
+    height: 30px;
+    font: inherit; font-weight: 500;
+    color: #fff; background: var(--accent);
+    border: 0; border-radius: 4px; cursor: pointer;
+  }
+  button:hover { filter: brightness(0.94); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- canvas area ---------- */
+  main {
+    flex: 1; min-width: 0; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px;
+  }
+  canvas {
+    display: block;
+    outline: 1px solid rgba(0,0,0,.12);
+    background:
+      conic-gradient(#d6d6d6 25%, #fff 0 50%, #d6d6d6 0 75%, #fff 0) 0 0 / 12px 12px;
+  }
+  .status {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 26px; padding: 0 12px;
+    display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+    color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 720px) {
+    body { flex-direction: column; height: auto; }
+    aside { width: 100%; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { padding: 16px 16px 32px; min-height: 60vh; }
+  }
+</style>
+</head>
+<body>
+  <aside>
+    <div class="title">12col</div>
+
+    <section>
+      <div class="head">Canvas</div>
+      <select id="preset" aria-label="Size preset">
+        <option value="">Custom</option>
+        <option value="1920x1080" selected>1920 × 1080</option>
+        <option value="3840x2160">3840 × 2160</option>
+        <option value="1280x720">1280 × 720</option>
+        <option value="1080x1080">1080 × 1080</option>
+        <option value="1080x1350">1080 × 1350</option>
+        <option value="1080x1920">1080 × 1920</option>
+      </select>
+      <div class="grid2">
+        <label class="input" title="Width"><span>W</span><input type="number" id="w" min="1" max="16384" value="1920"></label>
+        <label class="input" title="Height"><span>H</span><input type="number" id="h" min="1" max="16384" value="1080"></label>
+      </div>
+    </section>
+
+    <section>
+      <div class="head">Grid</div>
+      <div class="grid2">
+        <label class="input" title="Columns"><span>Cols</span><input type="number" id="cols" min="0" max="500" value="12"></label>
+        <label class="input" title="Rows"><span>Rows</span><input type="number" id="rows" min="0" max="500" value="6"></label>
+      </div>
+      <label class="input" title="Gutter"><span>Gutter</span><input type="number" id="gutter" min="0" value="0"></label>
+    </section>
+
+    <section>
+      <div class="head">
+        Margins
+        <label class="toggle" title="Use the same value for all sides">
+          <input type="checkbox" id="link">
+          <span>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.5 2.5 0 013.5 3.5l-1 1M9 11.5l-1 1A2.5 2.5 0 014.5 9l1-1"/></svg>
+            Link
+          </span>
+        </label>
+      </div>
+      <div class="grid2">
+        <label class="input" title="Top"><span>T</span><input type="number" id="mt" min="0" value="80" data-margin></label>
+        <label class="input" title="Bottom"><span>B</span><input type="number" id="mb" min="0" value="120" data-margin></label>
+        <label class="input" title="Left"><span>L</span><input type="number" id="ml" min="0" value="80" data-margin></label>
+        <label class="input" title="Right"><span>R</span><input type="number" id="mr" min="0" value="80" data-margin></label>
+      </div>
+    </section>
+
+    <section>
+      <div class="head">Lines</div>
+      <div class="grid2">
+        <label class="input color" title="Line color"><input type="color" id="color" value="#ff0000"><span class="hex" id="hex">FF0000</span></label>
+        <label class="input" title="Line thickness"><span>Px</span><input type="number" id="lw" min="1" max="50" value="1"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="transparent"> Transparent background</label>
+    </section>
+
+    <div class="footer">
+      <div class="info" id="info"></div>
+      <button id="download">Export PNG</button>
+    </div>
+  </aside>
+
+  <main id="stage">
+    <canvas id="canvas"></canvas>
+    <div class="status"><span id="sizeTag"></span><span id="zoom"></span></div>
+  </main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const canvas = $('canvas');
+  const stage = $('stage');
+  const fields = ['w', 'h', 'cols', 'rows', 'gutter', 'mt', 'mr', 'mb', 'ml', 'lw', 'color', 'link', 'transparent'];
+  const STORE = '12col:v1';
+
+  // ---- persistence (per-browser convenience only) ----
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (saved) for (const k of fields) {
+      if (!(k in saved)) continue;
+      const el = $(k);
+      if (el.type === 'checkbox') el.checked = !!saved[k]; else el.value = saved[k];
+    }
+  } catch (e) {}
+
+  function save() {
+    try {
+      const o = {};
+      for (const k of fields) { const el = $(k); o[k] = el.type === 'checkbox' ? el.checked : el.value; }
+      localStorage.setItem(STORE, JSON.stringify(o));
+    } catch (e) {}
+  }
+
+  const num = (id, min = 0, max = Infinity) => {
+    const v = parseFloat($(id).value);
+    return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : min;
+  };
+
+  function read() {
+    return {
+      w: Math.round(num('w', 1, 16384)),
+      h: Math.round(num('h', 1, 16384)),
+      cols: Math.round(num('cols', 0, 500)),
+      rows: Math.round(num('rows', 0, 500)),
+      gutter: num('gutter'),
+      mt: num('mt'), mr: num('mr'), mb: num('mb'), ml: num('ml'),
+      lw: Math.round(num('lw', 1, 50)),
+      color: $('color').value,
+      transparent: $('transparent').checked,
+    };
+  }
+
+  // Positions of every guide along one axis: outer edges of the content box,
+  // plus both sides of each gutter (or a single line if gutter is 0).
+  function edges(start, len, n, g) {
+    const out = [start, start + len];
+    if (n > 1) {
+      const size = (len - g * (n - 1)) / n;
+      for (let i = 1; i < n; i++) {
+        const end = start + i * size + (i - 1) * g;
+        out.push(end);
+        if (g > 0) out.push(end + g);
+      }
+    }
+    return out;
+  }
+
+  const fmt = v => (Math.round(v * 100) / 100).toString();
+
+  // Draw the grid into `cv` at scale k (k = 1 for the exported PNG).
+  function render(cv, s, k, geo) {
+    const W = Math.max(1, Math.round(s.w * k));
+    const H = Math.max(1, Math.round(s.h * k));
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    c.clearRect(0, 0, W, H);
+    if (!s.transparent) { c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H); }
+    if (!geo.ok) return;
+    c.fillStyle = s.color;
+    const lw = Math.max(1, Math.round(s.lw * k));
+    const place = (p, max) => Math.min(max - lw, Math.max(0, Math.round(p * k - lw / 2)));
+    const xs = new Set(edges(s.ml, geo.cw, geo.colW > 0 ? s.cols : 0, s.gutter).map(x => place(x, W)));
+    const ys = new Set(edges(s.mt, geo.ch, geo.rowH > 0 ? s.rows : 0, s.gutter).map(y => place(y, H)));
+    for (const x of xs) c.fillRect(x, 0, lw, H);
+    for (const y of ys) c.fillRect(0, y, W, lw);
+  }
+
+  function geometry(s) {
+    const cw = s.w - s.ml - s.mr;
+    const ch = s.h - s.mt - s.mb;
+    const colW = s.cols > 0 ? (cw - s.gutter * (s.cols - 1)) / s.cols : cw;
+    const rowH = s.rows > 0 ? (ch - s.gutter * (s.rows - 1)) / s.rows : ch;
+    return { cw, ch, colW, rowH, ok: cw > 0 && ch > 0 };
+  }
+
+  function draw() {
+    const s = read();
+    const cw = s.w - s.ml - s.mr;
+    const ch = s.h - s.mt - s.mb;
+    const colW = s.cols > 0 ? (cw - s.gutter * (s.cols - 1)) / s.cols : cw;
+    const rowH = s.rows > 0 ? (ch - s.gutter * (s.rows - 1)) / s.rows : ch;
+
+    const info = $('info');
+    if (cw <= 0 || ch <= 0) {
+      info.className = 'info warn';
+      info.textContent = 'Margins are larger than the canvas.';
+    } else if (colW <= 0 || rowH <= 0) {
+      info.className = 'info warn';
+      info.textContent = 'Gutters don’t fit — lower the gutter or the count.';
+    } else {
+      info.className = 'info';
+      info.textContent =
+        (s.cols > 0 ? `Column ${fmt(colW)}px` : 'No columns') + ' · ' +
+        (s.rows > 0 ? `Row ${fmt(rowH)}px` : 'No rows');
+    }
+
+    $('sizeTag').textContent = `${s.w} × ${s.h}`;
+    $('hex').textContent = s.color.replace('#', '');
+    fit();
+    save();
+  }
+
+  // Preview is drawn at on-screen resolution so thin lines never vanish when scaled down.
+  function fit() {
+    const s = read();
+    const cs = getComputedStyle(stage);
+    const availW = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const scale = Math.max(0.01, Math.min(availW / s.w, availH / s.h, 1));
+    const dpr = window.devicePixelRatio || 1;
+    render(canvas, s, Math.min(1, scale * dpr), geometry(s));
+    canvas.style.width = Math.max(1, s.w * scale) + 'px';
+    canvas.style.height = Math.max(1, s.h * scale) + 'px';
+    $('zoom').textContent = Math.round(scale * 100) + '%';
+  }
+
+  // ---- wiring ----
+  document.querySelectorAll('[data-margin]').forEach(el => {
+    el.addEventListener('input', () => {
+      if ($('link').checked) document.querySelectorAll('[data-margin]').forEach(o => { if (o !== el) o.value = el.value; });
+    });
+  });
+  $('link').addEventListener('change', () => {
+    if ($('link').checked) { const v = $('mt').value; document.querySelectorAll('[data-margin]').forEach(o => o.value = v); draw(); }
+  });
+
+  $('preset').addEventListener('change', () => {
+    const v = $('preset').value;
+    if (!v) return;
+    const [w, h] = v.split('x');
+    $('w').value = w; $('h').value = h;
+    draw();
+  });
+  const syncPreset = () => {
+    const key = `${$('w').value}x${$('h').value}`;
+    $('preset').value = [...$('preset').options].some(o => o.value === key) ? key : '';
+  };
+  $('w').addEventListener('input', syncPreset);
+  $('h').addEventListener('input', syncPreset);
+
+  document.querySelectorAll('aside input').forEach(el => el.addEventListener('input', draw));
+  new ResizeObserver(fit).observe(stage);
+
+  $('download').addEventListener('click', () => {
+    const s = read();
+    const name = `12col-${s.w}x${s.h}-${s.cols}c-${s.rows}r-${fmt(s.gutter)}g.png`;
+    const out = document.createElement('canvas');
+    render(out, s, 1, geometry(s));
+    out.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  });
+
+  syncPreset();
+  draw();
+})();
+</script>
+</body>
+</html>
